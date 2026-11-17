@@ -39,7 +39,16 @@ export default function Footer() {
             <img src="/assets/logo-mark.svg" alt="" />
             <span>Nexora Vision Play</span>
           </Link>
-          <p>Slots and live tables from leading providers, in one place.</p>
+          <p>
+            Nexora Vision Play brings slots, live tables and the week's hottest games from
+            leading providers together in one place. Browse by provider, jump straight into a
+            game, and pick up where you left off on any device.
+          </p>
+          <p>
+            Your account keeps everything in one wallet: deposit, withdraw, convert points and
+            review every transaction from the same menu. Set your own limits, take breaks when
+            you need them, and play for fun.
+          </p>
         </div>
 
         <nav className="footer__cols" aria-label="Footer">

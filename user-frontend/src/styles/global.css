@@ -920,8 +920,9 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- Footer ---------- */
 .footer { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 28px; color: var(--text-dim); font-size: 13px; }
 .footer__top { display: flex; flex-wrap: wrap; gap: 32px 64px; justify-content: space-between; padding-bottom: 24px; }
-.footer__brand { max-width: 320px; }
+.footer__brand { max-width: 400px; }
 .footer__brand p { margin: 0; line-height: 1.6; }
+.footer__brand p + p { margin-top: 10px; }
 .footer__logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; font-weight: 700; font-size: 16px; color: var(--text); }
 .footer__logo img { height: 28px; border-radius: 7px; }
 .footer__cols { display: flex; gap: 64px; flex-wrap: wrap; }
