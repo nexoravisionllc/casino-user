@@ -102,3 +102,15 @@ export const ConvertIcon = (p) => (
 export const ReceiptIcon = (p) => (
   <svg {...base} {...p}><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="9" y1="12" x2="15" y2="12" /></svg>
 );
+
+export const ChevronDownIcon = (p) => (
+  <svg {...base} {...p}><polyline points="6 9 12 15 18 9" /></svg>
+);
+
+export const LogoutIcon = (p) => (
+  <svg {...base} {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+);
+
+export const WalletIcon = (p) => (
+  <svg {...base} {...p}><path d="M20 7H5a2 2 0 0 1 0-4h13v4" /><path d="M3 5v14a2 2 0 0 0 2 2h15V7" /><circle cx="16" cy="14" r="1.2" fill="currentColor" stroke="none" /></svg>
+);

@@ -1,10 +1,10 @@
-// The live-casino providers (Evolution, Pragmatic Play Live). These are entered
-// straight into the provider lobby rather than shown as a game list, and only
-// while the admin "Live Casino" setting is on. The tile images live under
-// public/live/ and the lobby symbols are the providers' lobby games.
+// The live-casino providers (Evolution, Pragmatic Play Live). From the Providers
+// page these are entered straight into the provider lobby rather than shown as
+// a game list, and only while the admin "Live Casino" setting is on. The lobby
+// symbols are the providers' lobby games.
 export const LIVE_PROVIDERS = [
-  { providerId: 6, name: 'Evolution', symbol: 'L_EVL0001s', image: '/live/evolution.png' },
-  { providerId: 8, name: 'Pragmatic Play Live', symbol: '101', image: '/live/pragmatic.png' },
+  { providerId: 6, name: 'Evolution', symbol: 'L_EVL0001s' },
+  { providerId: 8, name: 'Pragmatic Play Live', symbol: '101' },
 ];
 
 const norm = (s) => (s || '').trim().toLowerCase();

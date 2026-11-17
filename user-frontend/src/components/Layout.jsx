@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Header from './Header.jsx';
 import Sidebar from './Sidebar.jsx';
 import MobileNav from './MobileNav.jsx';
@@ -10,6 +11,13 @@ import RouteLoader from './RouteLoader.jsx';
 export default function Layout({ children }) {
   const isDesktop = typeof window !== 'undefined' ? window.innerWidth > 900 : true;
   const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
+
+  const { pathname } = useLocation();
+
+  // On mobile the sidebar is a drawer: close it after navigating.
+  useEffect(() => {
+    if (window.innerWidth <= 900) setSidebarOpen(false);
+  }, [pathname]);
 
   const toggle = () => setSidebarOpen((v) => !v);
   const closeDrawer = () => setSidebarOpen(false);

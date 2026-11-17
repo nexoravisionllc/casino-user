@@ -92,10 +92,10 @@ export default function AuthModal() {
 
         {/* Left promotional panel */}
         <div className="modal__promo">
-          <img className="modal__crown" src="/assets/banner-logo.png" alt="" />
-          <h3>Welcome to<br />BC Game</h3>
-          <p>Thousands of slots, live tables and sports markets — all in one place.</p>
-          <img className="modal__team" src="/assets/banner-team.png" alt="" />
+          <img className="modal__team" src="/assets/hero.jpg" alt="" />
+          <img className="modal__crown" src="/assets/logo-mark.svg" alt="" />
+          <h3>Welcome to<br />Nexora Vision Play</h3>
+          <p>Thousands of slots and hot games — all in one place.</p>
         </div>
 
         {/* Right form panel */}

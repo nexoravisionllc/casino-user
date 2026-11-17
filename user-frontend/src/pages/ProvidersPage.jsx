@@ -1,40 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import Footer from '../components/Footer.jsx';
 import { ProvidersIcon, SearchIcon } from '../components/Icons.jsx';
-import { apiGet } from '../api/client.js';
-import { launchBySymbol } from '../api/launch.js';
-import { liveProviderById } from '../data/liveProviders.js';
-import { useSettings } from '../context/SettingsContext.jsx';
+import { useProviders, useOpenProvider } from '../hooks/useProviders.js';
 
 // /providers: a searchable grid of game providers. Each card shows the
 // provider logo (served by the admin backend) with the name as a fallback.
 export default function ProvidersPage() {
-  const navigate = useNavigate();
-  const { liveCasino } = useSettings();
-  const [providers, setProviders] = useState([]);
+  const providers = useProviders();
+  const openProvider = useOpenProvider();
   const [search, setSearch] = useState('');
-
-  // Live providers (Evolution / Pragmatic Play Live) do not open a game list:
-  // when Live Casino is on they go straight to the provider lobby, otherwise a
-  // "Coming soon" notice is shown. Every other provider opens its game list.
-  const openProvider = (p) => {
-    const live = liveProviderById(p.providerId);
-    if (live) {
-      if (!liveCasino) { window.alert('Coming soon'); return; }
-      launchBySymbol(live.symbol, live.providerId);
-      return;
-    }
-    navigate(`/providers/${encodeURIComponent(p.name)}`);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    apiGet('/games/provider-cards')
-      .then((rows) => { if (!cancelled) setProviders(rows ?? []); })
-      .catch(() => { if (!cancelled) setProviders([]); });
-    return () => { cancelled = true; };
-  }, []);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();

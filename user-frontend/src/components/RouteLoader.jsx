@@ -22,7 +22,7 @@ export default function RouteLoader() {
     <div className="route-loader" role="status" aria-live="polite" aria-label="Loading">
       <div className="route-loader__badge">
         <span className="route-loader__ring" />
-        <img className="route-loader__logo" src="/assets/logo-small.png" alt="Loading" />
+        <img className="route-loader__logo" src="/assets/logo-mark.svg" alt="Loading" />
       </div>
     </div>
   );

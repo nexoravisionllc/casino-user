@@ -16,7 +16,7 @@ export default function ProviderGamesPage() {
   const navigate = useNavigate();
 
   // Live providers (Evolution / Pragmatic Play Live) never show a game list;
-  // they are handled by the /livecasino page (lobby tile / Coming soon).
+  // they are handled by the /providers page (lobby launch / Coming soon).
   const isLive = isLiveProviderName(providerName);
 
   const [games, setGames] = useState([]);
@@ -65,8 +65,9 @@ export default function ProviderGamesPage() {
     }
   };
 
-  // A live provider is entered through the Live Casino page, not a game list.
-  if (isLive) return <Navigate to="/livecasino" replace />;
+  // A live provider is entered from the Providers page (straight into its
+  // lobby), not a game list.
+  if (isLive) return <Navigate to="/providers" replace />;
 
   return (
     <>

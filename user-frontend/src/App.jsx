@@ -1,13 +1,10 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
-import SportsPage from './pages/SportsPage.jsx';
-import CasinoPage from './pages/CasinoPage.jsx';
 import SlotPage from './pages/SlotPage.jsx';
 import ProvidersPage from './pages/ProvidersPage.jsx';
 import ProviderGamesPage from './pages/ProviderGamesPage.jsx';
 import HotGamePage from './pages/HotGamePage.jsx';
-import CasinoLobbyPage from './pages/CasinoLobbyPage.jsx';
 import DepositPage from './pages/DepositPage.jsx';
 import WithdrawPage from './pages/WithdrawPage.jsx';
 import PointConvertPage from './pages/PointConvertPage.jsx';
@@ -24,11 +21,8 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/sports/*" element={<SportsPage />} />
-          <Route path="/livecasino/*" element={<CasinoPage />} />
           <Route path="/slot/*" element={<SlotPage />} />
           <Route path="/hotgame/*" element={<HotGamePage />} />
-          <Route path="/casino/*" element={<CasinoLobbyPage />} />
           <Route path="/providers" element={<ProvidersPage />} />
           <Route path="/providers/:name" element={<ProviderGamesPage />} />
           <Route path="/money/deposit" element={<DepositPage />} />
