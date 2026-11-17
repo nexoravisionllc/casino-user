@@ -6,7 +6,11 @@ export async function apiGet(path, token) {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, { headers });
-  if (!res.ok) throw new Error('Request failed.');
+  if (!res.ok) {
+    const err = new Error('Request failed.');
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 

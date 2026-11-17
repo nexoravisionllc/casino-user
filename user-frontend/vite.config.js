@@ -11,6 +11,12 @@ export default defineConfig({
         target: 'http://localhost:5090',
         changeOrigin: true,
       },
+      // The SignalR wallet hub lives on the admin backend, not the user backend.
+      '/hubs': {
+        target: 'http://localhost:5100',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

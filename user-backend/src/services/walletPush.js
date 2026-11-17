@@ -7,7 +7,7 @@ import { log } from '../lib/log.js';
  */
 export async function notifyWallet(loginId, balance, point) {
   try {
-    await fetch(`${config.adminBackend.baseUrl}/api/wallet/notify`, {
+    const res = await fetch(`${config.adminBackend.baseUrl}/api/wallet/notify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -16,6 +16,9 @@ export async function notifyWallet(loginId, balance, point) {
       body: JSON.stringify({ loginId, balance, point }),
       signal: AbortSignal.timeout(3000),
     });
+    // fetch doesn't throw on HTTP errors; a 401 here means NOTIFY_SECRET differs
+    // between this backend and the admin backend.
+    if (!res.ok) log.warn(`Wallet push notify for ${loginId} was rejected: HTTP ${res.status}.`);
   } catch (err) {
     // Never let a push failure break the game callback.
     log.warn(`Wallet push notify failed for ${loginId}.`, err);

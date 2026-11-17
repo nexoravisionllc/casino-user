@@ -1,6 +1,6 @@
 import express from 'express';
 import { db, isUniqueViolation } from '../db.js';
-import { createToken } from '../lib/auth.js';
+import { createToken, currentUserId, requireAuth } from '../lib/auth.js';
 import { decimalJson, longJson } from '../lib/decimal.js';
 import { bodyOf, isBlank } from '../lib/http.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
@@ -34,6 +34,23 @@ router.post('/login', async (req, res) => {
       point: decimalJson(user.Point),
       status: user.Status,
     },
+  });
+});
+
+/** The signed-in user's current profile and wallet (re-read on page load/focus). */
+router.get('/me', requireAuth, async (req, res) => {
+  const [user] = await db.query(
+    'SELECT Uid, Name, LoginId, Balance, Point, Status FROM Users WHERE Uid = :uid LIMIT 1',
+    { uid: currentUserId(req) });
+  if (!user || String(user.Status).toLowerCase() !== 'active') return res.status(401).end();
+
+  res.json({
+    uid: longJson(user.Uid),
+    name: user.Name,
+    loginId: user.LoginId,
+    balance: decimalJson(user.Balance),
+    point: decimalJson(user.Point),
+    status: user.Status,
   });
 });
 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
-import { apiPost } from '../api/client.js';
+import { apiGet, apiPost } from '../api/client.js';
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = 'auth';
@@ -57,9 +57,37 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
+  // Re-read the user's balance/point from the server. localStorage only holds the
+  // snapshot taken at login, so without this a page refresh shows stale numbers.
+  const token = auth?.token ?? null;
+  const refreshUser = useCallback(async () => {
+    if (!token) return;
+    try {
+      const fresh = await apiGet('/auth/me', token);
+      setAuth((prev) => (prev?.token === token ? { ...prev, user: { ...prev.user, ...fresh } } : prev));
+    } catch (err) {
+      // Expired/invalid session or deactivated account: sign out.
+      if (err.status === 401) setAuth((prev) => (prev?.token === token ? null : prev));
+    }
+  }, [token]);
+
+  // Refresh on load/sign-in, and whenever the user comes back to this tab
+  // (games open in a new window, so returning here should show the result).
+  useEffect(() => {
+    if (!token) return;
+    refreshUser();
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshUser(); };
+    window.addEventListener('focus', refreshUser);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', refreshUser);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [token, refreshUser]);
+
   const value = useMemo(
-    () => ({ user: auth?.user ?? null, token: auth?.token ?? null, login, register, logout, updateWallet }),
-    [auth, updateWallet]
+    () => ({ user: auth?.user ?? null, token, login, register, logout, updateWallet, refreshUser }),
+    [auth, token, updateWallet, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
