@@ -3,6 +3,12 @@
 A crypto-casino style home page (inspired by the provided reference) with a
 React front end and a Node.js back end.
 
+## Documentation
+
+- [Setup.md](Setup.md): full server install guide (both repos, Nginx, systemd, HTTPS, backups, troubleshooting).
+- [HOW-TO-USE.md](HOW-TO-USE.md): player guide.
+- Admin panel guide: `HOW-TO-USE.md` in the `casino-admin` repo.
+
 ## Stack
 
 | Part      | Technology                                            |
