@@ -1,6 +1,6 @@
 // Minimal fetch wrapper for the backend API.
 //const BASE = 'https://frontbackend.fufvkgylntiyepgk.net/api';
-const BASE = 'http://localhost:5090/api';
+const BASE = '/api';
 
 export async function apiGet(path, token) {
   const headers = {};

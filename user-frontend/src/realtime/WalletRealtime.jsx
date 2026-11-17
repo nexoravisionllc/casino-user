@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 // The admin backend hosts the wallet hub (it owns all balance/point changes).
 //const HUB_URL = 'https://adminbackend.fufvkgylntiyepgk.net/hubs/wallet';
-const HUB_URL = 'http://localhost:5100/hubs/wallet';
+const HUB_URL = '/hubs/wallet';
 
 // While a user is signed in, keep a live connection to the wallet hub and push
 // balance/point changes straight into the auth state (so the header updates).
