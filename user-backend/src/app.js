@@ -6,6 +6,7 @@ import { log } from './lib/log.js';
 import { router as auth } from './routes/auth.js';
 import { router as callback } from './routes/callback.js';
 import { router as games } from './routes/games.js';
+import { router as payments } from './routes/payments.js';
 import { router as transactions } from './routes/transactions.js';
 
 export function createApp() {
@@ -19,6 +20,8 @@ export function createApp() {
   app.use('/api/games', games);
   // Parses its own body after the token check, so a bad token is always a 401.
   app.use('/api/transactions', transactions);
+  // Crypto deposits and withdrawals; each route parses its own body.
+  app.use('/api/payments', payments);
   app.use('/callback', jsonBody, callback);
 
   app.use((req, res) => res.status(404).end());

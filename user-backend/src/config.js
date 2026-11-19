@@ -28,6 +28,29 @@ const trustProxy = (v) => {
   return /^\d+$/.test(v) ? Number(v) : v;
 };
 
+// One EVM chain of the self-hosted gateway, read from <PREFIX>_* variables. A
+// chain is enabled when its RPC URL is set.
+const evmChain = (prefix, defaults) => ({
+  key: prefix,
+  name: defaults.name,
+  native: defaults.native,
+  rpcUrl: env[`${prefix}_RPC_URL`] || '',
+  chainId: int(env[`${prefix}_CHAIN_ID`], defaults.chainId),
+  // Blocks a transfer must be buried under before it counts.
+  confirmations: int(env[`${prefix}_CONFIRMATIONS`], defaults.confirmations),
+  // SYMBOL:contract pairs of the stablecoins accepted 1:1 as USD.
+  tokens: list(env[`${prefix}_TOKENS`], defaults.tokens)
+    .map((pair) => {
+      const [symbol, address] = pair.split(':').map((s) => s.trim());
+      return { symbol: (symbol || '').toUpperCase(), address: address || '' };
+    })
+    .filter((t) => t.symbol && t.address),
+  // Chainlink <native>/USD feed. Empty disables the native coin.
+  priceFeed: env[`${prefix}_PRICE_FEED`] ?? defaults.priceFeed,
+  // Deposit balances are swept to the treasury once worth at least this much.
+  sweepMinUsd: env[`${prefix}_SWEEP_MIN_USD`] || defaults.sweepMinUsd,
+});
+
 export const config = {
   root,
   host: env.HOST || 'localhost',
@@ -70,5 +93,47 @@ export const config = {
     returnUrl: env.FORTUNEGATE_RETURN_URL || 'http://localhost:5173/slot',
     defaultWinRatio: env.FORTUNEGATE_DEFAULT_WIN_RATIO || '0',
     callbackToken: env.FORTUNEGATE_CALLBACK_TOKEN ?? '',
+  },
+
+  // Self-hosted BSC / Ethereum gateway (services/onchain) for crypto deposits
+  // and withdrawals. Crypto is unavailable until it is configured.
+  onchain: {
+    // BIP-39 phrase. Player deposit addresses are m/44'/60'/0'/0/<n>.
+    mnemonic: (env.ONCHAIN_MNEMONIC || '').trim(),
+    // Private key of the hot wallet that pays withdrawals and sweep gas.
+    hotWalletKey: (env.ONCHAIN_HOT_WALLET_KEY || '').trim(),
+    // Where deposits are swept to; defaults to the hot wallet.
+    sweepTo: (env.ONCHAIN_SWEEP_TO || '').trim(),
+    // Run the deposit / sweep / payout worker in this process.
+    worker: env.ONCHAIN_WORKER !== 'false',
+    pollSeconds: int(env.ONCHAIN_POLL_SECONDS, 20),
+    // Addresses are checked every poll for this long after the player last opened
+    // the deposit page, and by the full scan otherwise.
+    watchHours: int(env.ONCHAIN_WATCH_HOURS, 72),
+    fullScanMinutes: int(env.ONCHAIN_FULL_SCAN_MINUTES, 60),
+    // Smaller deposits wait (uncredited) until the address holds at least this.
+    minDepositUsd: env.ONCHAIN_MIN_DEPOSIT_USD || '5',
+    // A native coin is not priced from a Chainlink answer older than this.
+    priceMaxAgeSeconds: int(env.ONCHAIN_PRICE_MAX_AGE_SECONDS, 3 * 3600),
+    chains: [
+      evmChain('BSC', {
+        name: 'BNB Smart Chain (BEP20)',
+        native: 'BNB',
+        chainId: 56,
+        confirmations: 15,
+        tokens: ['USDT:0x55d398326f99059fF775485246999027B3197955', 'USDC:0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'],
+        priceFeed: '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE',
+        sweepMinUsd: '10',
+      }),
+      evmChain('ETH', {
+        name: 'Ethereum (ERC20)',
+        native: 'ETH',
+        chainId: 1,
+        confirmations: 12,
+        tokens: ['USDT:0xdAC17F958D2ee523a2206206994597C13D831ec7', 'USDC:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
+        priceFeed: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419',
+        sweepMinUsd: '200',
+      }),
+    ].filter((c) => c.rpcUrl),
   },
 };

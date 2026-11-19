@@ -151,6 +151,88 @@ export const TABLES = {
       Name        VARCHAR(64) NOT NULL,
       Show_Enable TINYINT(1)  NOT NULL DEFAULT 1
     ) ${TABLE_OPTIONS}`,
+
+  // Crypto deposits (direction "deposit") and payouts ("withdraw"). A credited
+  // deposit creates a finished Transaction; a withdraw belongs to its request.
+  CryptoPayments: `
+    CREATE TABLE IF NOT EXISTS CryptoPayments (
+      uid             BIGINT        NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      order_id        VARCHAR(64)   NOT NULL,
+      direction       VARCHAR(16)   NOT NULL,
+      userid          VARCHAR(64)   NOT NULL,
+      amount          DECIMAL(18,2) NOT NULL,
+      currency        VARCHAR(16)   NOT NULL,
+      provider        VARCHAR(32)   NOT NULL,
+      provider_uuid   VARCHAR(64)   NULL,
+      status          VARCHAR(32)   NOT NULL,
+      payment_url     VARCHAR(512)  NULL,
+      payer_amount    VARCHAR(64)   NULL,
+      payer_currency  VARCHAR(16)   NULL,
+      network         VARCHAR(32)   NULL,
+      txid            TEXT          NULL,
+      address         VARCHAR(128)  NULL,
+      transaction_uid BIGINT        NULL,
+      expires_at      DATETIME(6)   NULL,
+      created_at      DATETIME(6)   NOT NULL,
+      updated_at      DATETIME(6)   NOT NULL,
+      UNIQUE KEY UX_CryptoPayments_order_id (order_id),
+      KEY IX_CryptoPayments_userid (userid),
+      KEY IX_CryptoPayments_transaction_uid (transaction_uid)
+    ) ${TABLE_OPTIONS}`,
+
+  // Self-hosted gateway: one deposit address per player. uid is the HD index,
+  // so rows must never be deleted or the table truncated in production.
+  OnchainAddresses: `
+    CREATE TABLE IF NOT EXISTS OnchainAddresses (
+      uid         BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      userid      VARCHAR(64)  NOT NULL,
+      address     VARCHAR(42)  NULL,
+      watch_until DATETIME(6)  NOT NULL,
+      created_at  DATETIME(6)  NOT NULL,
+      UNIQUE KEY UX_OnchainAddresses_userid (userid),
+      UNIQUE KEY UX_OnchainAddresses_address (address),
+      KEY IX_OnchainAddresses_watch_until (watch_until)
+    ) ${TABLE_OPTIONS}`,
+
+  // Per address and asset, the raw on-chain amount already accounted for
+  // (credited to the player or ours). Anything above it is a new deposit.
+  OnchainBalances: `
+    CREATE TABLE IF NOT EXISTS OnchainBalances (
+      chain         VARCHAR(16)    NOT NULL,
+      address       VARCHAR(42)    NOT NULL,
+      asset         VARCHAR(16)    NOT NULL,
+      accounted     DECIMAL(65,0)  NOT NULL DEFAULT 0,
+      checked_block BIGINT         NULL,
+      updated_at    DATETIME(6)    NOT NULL,
+      PRIMARY KEY (chain, address, asset)
+    ) ${TABLE_OPTIONS}`,
+
+  // Every transaction the gateway signs, stored before it is broadcast so a
+  // restart rebroadcasts it instead of signing a second one.
+  OnchainTxs: `
+    CREATE TABLE IF NOT EXISTS OnchainTxs (
+      uid             BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      chain           VARCHAR(16)    NOT NULL,
+      kind            VARCHAR(16)    NOT NULL,
+      from_address    VARCHAR(42)    NOT NULL,
+      to_address      VARCHAR(42)    NOT NULL,
+      asset           VARCHAR(16)    NOT NULL,
+      amount          DECIMAL(65,0)  NOT NULL,
+      deposit_address VARCHAR(42)    NULL,
+      payment_uid     BIGINT         NULL,
+      nonce           BIGINT         NOT NULL,
+      tx_hash         VARCHAR(66)    NOT NULL,
+      raw_tx          MEDIUMTEXT     NOT NULL,
+      status          VARCHAR(16)    NOT NULL,
+      block_number    BIGINT         NULL,
+      fee             DECIMAL(65,0)  NULL,
+      created_at      DATETIME(6)    NOT NULL,
+      updated_at      DATETIME(6)    NOT NULL,
+      UNIQUE KEY UX_OnchainTxs_tx_hash (tx_hash),
+      KEY IX_OnchainTxs_chain_status (chain, status),
+      KEY IX_OnchainTxs_from_nonce (chain, from_address, nonce),
+      KEY IX_OnchainTxs_payment_uid (payment_uid)
+    ) ${TABLE_OPTIONS}`,
 };
 
 // Columns only this backend needs, added to a table that was created without them.
@@ -197,6 +279,13 @@ export async function ensureSchema() {
       { table, column });
     if (Number(n) === 0) await db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
   }
+
+  // txid held one hash (VARCHAR(128)); a deposit made of several transfers lists
+  // them all, comma-separated, so widen it on databases created before that.
+  const [txid] = await db.query(
+    `SELECT DATA_TYPE AS type FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'CryptoPayments' AND COLUMN_NAME = 'txid'`);
+  if (txid && txid.type.toLowerCase() === 'varchar') await db.query('ALTER TABLE CryptoPayments MODIFY txid TEXT NULL');
 }
 
 // ---- Seed data (only into empty tables) ----

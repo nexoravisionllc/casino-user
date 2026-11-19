@@ -11,6 +11,7 @@ const fmtTime = (d) => {
   return `${dateStr(x)} ${pad(x.getHours())}:${pad(x.getMinutes())}:${pad(x.getSeconds())}`;
 };
 const label = (t) => (t || '').replace(/-/g, ' ').toUpperCase();
+const shortHash = (h) => `${h.slice(0, 8)}…${h.slice(-6)}`;
 
 // /money/transaction — the logged-in user's own transaction history for a period.
 export default function TransactionPage() {
@@ -73,7 +74,25 @@ export default function TransactionPage() {
                 {filtered.map((t, i) => (
                   <tr key={t.uid}>
                     <td>{i + 1}</td>
-                    <td><span className={`txtag txtag--${t.type}`}>{label(t.type)}</span></td>
+                    <td>
+                      <span className={`txtag txtag--${t.type}`}>{label(t.type)}</span>
+                      {t.txLinks?.length ? (
+                        <span className="txpage__txtags">
+                          {t.txLinks.map((l) => (
+                            <a
+                              key={l.hash}
+                              className="txchip"
+                              href={l.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`View ${l.hash} on the block explorer`}
+                            >
+                              {shortHash(l.hash)} ↗
+                            </a>
+                          ))}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="txpage__num"><b>${money(t.amount)}</b></td>
                     <td className="txpage__num">${money(t.beforeAmount)}</td>
                     <td className="txpage__num">{t.afterAmount == null ? '—' : `$${money(t.afterAmount)}`}</td>

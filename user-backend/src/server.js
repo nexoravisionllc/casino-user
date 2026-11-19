@@ -4,6 +4,17 @@ import { config } from './config.js';
 import { db } from './db.js';
 import { log } from './lib/log.js';
 import { ensureSchema, seed } from './schema.js';
+import { validateConfig as validateOnchain } from './services/onchain.js';
+import { startWorker } from './services/onchainWorker.js';
+
+// A typo in a wallet secret must stop startup rather than lose funds.
+let onchain;
+try {
+  onchain = validateOnchain();
+} catch (err) {
+  log.error('On-chain gateway configuration is invalid.', err);
+  process.exit(1);
+}
 
 // The API cannot serve without its database, so a failure here stops startup.
 try {
@@ -15,6 +26,13 @@ try {
 }
 
 const app = createApp();
+
+let stopWorker = null;
+if (onchain) {
+  log.info(`On-chain gateway on ${config.onchain.chains.map((c) => c.key).join(', ')}: hot wallet ${onchain.hotAddress}, sweeping to ${onchain.sweepTo}.`);
+  if (config.onchain.worker) stopWorker = startWorker();
+  else log.info('ONCHAIN_WORKER=false: deposits, sweeps and payouts are processed by another instance.');
+}
 
 // Like Kestrel, "localhost" listens on both the IPv4 and IPv6 loopback.
 const hosts = config.host === 'localhost' ? ['127.0.0.1', '::1'] : [config.host];
@@ -43,7 +61,9 @@ const shutdown = () => {
     server.close();
     server.closeAllConnections?.();
   }
-  db.close().finally(() => process.exit(0));
+  Promise.resolve(stopWorker?.())
+    .then(() => db.close())
+    .finally(() => process.exit(0));
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

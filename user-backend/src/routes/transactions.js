@@ -4,6 +4,7 @@ import { currentUserId, requireAuth } from '../lib/auth.js';
 import { Decimal, decimalJson, longJson } from '../lib/decimal.js';
 import { dbDate } from '../lib/format.js';
 import { bodyOf, jsonBody } from '../lib/http.js';
+import { txRefsFromMemo } from '../services/onchain.js';
 import { notifyWallet } from '../services/walletPush.js';
 
 export const router = express.Router();
@@ -41,6 +42,7 @@ router.get('/', async (req, res) => {
     status: t.status,
     managerId: t.managerid ?? null,
     memo: t.memo ?? null,
+    txLinks: txRefsFromMemo(t.memo) ?? [],
     createdAt: dbDate(t.created_at),
   })));
 });

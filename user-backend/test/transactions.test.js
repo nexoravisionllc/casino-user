@@ -192,7 +192,8 @@ test('the list shows only own rows, newest first, in the original shape', async 
   assert.equal(status, 200);
   assert.equal(json.length, 2);
   assert.deepEqual(json.map((r) => r.type), ['point-convert', 'deposit']);
-  assert.deepEqual(Object.keys(json[0]), ['uid', 'type', 'amount', 'beforeAmount', 'afterAmount', 'status', 'managerId', 'memo', 'createdAt']);
+  assert.deepEqual(Object.keys(json[0]), ['uid', 'type', 'amount', 'beforeAmount', 'afterAmount', 'status', 'managerId', 'memo', 'txLinks', 'createdAt']);
+  assert.deepEqual(json[0].txLinks, [], 'no on-chain links for a non-crypto memo');
 
   assert.equal(json[1].createdAt, '2025-03-04T05:06:07.12', 'no Z, trailing zeros trimmed');
   assert.equal(json[1].afterAmount, null);

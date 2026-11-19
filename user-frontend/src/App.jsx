@@ -11,6 +11,7 @@ import PointConvertPage from './pages/PointConvertPage.jsx';
 import TransactionPage from './pages/TransactionPage.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AuthGate from './components/AuthGate.jsx';
+import RequireAuth from './components/RequireAuth.jsx';
 import WalletRealtime from './realtime/WalletRealtime.jsx';
 
 export default function App() {
@@ -25,10 +26,10 @@ export default function App() {
           <Route path="/hotgame/*" element={<HotGamePage />} />
           <Route path="/providers" element={<ProvidersPage />} />
           <Route path="/providers/:name" element={<ProviderGamesPage />} />
-          <Route path="/money/deposit" element={<DepositPage />} />
-          <Route path="/money/withdraw" element={<WithdrawPage />} />
-          <Route path="/money/point-convert" element={<PointConvertPage />} />
-          <Route path="/money/transaction" element={<TransactionPage />} />
+          <Route path="/money/deposit" element={<RequireAuth><DepositPage /></RequireAuth>} />
+          <Route path="/money/withdraw" element={<RequireAuth><WithdrawPage /></RequireAuth>} />
+          <Route path="/money/point-convert" element={<RequireAuth><PointConvertPage /></RequireAuth>} />
+          <Route path="/money/transaction" element={<RequireAuth><TransactionPage /></RequireAuth>} />
           {/* Auth now opens as a modal; legacy paths fall back to the home page. */}
           <Route path="*" element={<Home />} />
         </Routes>

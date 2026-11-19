@@ -1322,6 +1322,25 @@ button { font-family: inherit; cursor: pointer; }
 .deposit__back:hover { background: var(--panel-2); }
 .deposit__spacer { width: 34px; }
 
+.deposit__methods { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.deposit__method {
+  padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+  background: transparent; color: inherit; font-weight: 700; cursor: pointer;
+}
+.deposit__method:hover { background: var(--panel-2); }
+.deposit__method.is-selected { border-color: var(--brand); background: rgba(22, 199, 132, .12); color: var(--brand); }
+.deposit__hint { color: var(--text-dim); font-size: 13px; margin: 0 0 12px; }
+.deposit__field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.deposit__label { color: var(--text-dim); font-size: 13px; font-weight: 600; }
+.deposit__field select,
+.deposit__field input {
+  width: 100%; min-width: 0; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--panel-2); color: inherit; font: inherit; font-size: 14px;
+}
+.deposit__field input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.deposit__field select:focus,
+.deposit__field input:focus { outline: none; border-color: var(--brand); }
+
 .deposit__grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
 }
@@ -1359,6 +1378,54 @@ button { font-family: inherit; cursor: pointer; }
 }
 .deposit__request:hover { background: var(--brand-2); }
 .deposit__request:disabled { opacity: .6; cursor: default; }
+.onchain__networks { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.onchain__network {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 10px; font-size: 13px;
+}
+.onchain__network span { color: var(--text-dim); }
+/* Always dark-on-white: scanners struggle with inverted codes in dark mode. */
+.onchain__qr { display: flex; justify-content: center; margin-bottom: 12px; }
+.onchain__qr img { display: block; width: 180px; height: 180px; border-radius: 10px; background: #fff; }
+.onchain__address { display: flex; gap: 8px; }
+.onchain__address input { flex: 1; min-width: 0; }
+.onchain__copy {
+  padding: 0 14px; border-radius: 10px; border: 1px solid var(--brand); background: transparent;
+  color: var(--brand); font-weight: 700; cursor: pointer;
+}
+.onchain__copy:hover { background: rgba(22, 199, 132, .12); }
+.onchain__recent { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.onchain__row {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 12px; font-size: 13px;
+  border-radius: 10px; background: var(--panel-2);
+}
+.onchain__row small { color: var(--text-dim); }
+.onchain__row > small { grid-column: 1 / -1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.onchain__row-tx { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+
+.onchain__status {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-dim); font-size: 13px; margin: 0 0 12px;
+}
+.onchain__status-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: var(--brand); box-shadow: 0 0 0 0 var(--brand);
+  animation: onchain-pulse 1.8s ease-out infinite;
+}
+.onchain__status.is-checking .onchain__status-dot {
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--brand) 30%, transparent);
+  border-top-color: var(--brand); background: transparent; box-shadow: none;
+  animation: route-spin .8s linear infinite;
+}
+@keyframes onchain-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--brand) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onchain__status-dot { animation: none; }
+}
 
 /* ---------- Transaction page (/money/transaction) ---------- */
 .txpage { padding: 20px 0 40px; }
@@ -1384,6 +1451,15 @@ button { font-family: inherit; cursor: pointer; }
 .txpage__num { white-space: nowrap; }
 .txpage__time { white-space: nowrap; color: var(--text-dim); }
 .txpage__empty { text-align: center; color: var(--text-dim); padding: 26px 0; }
+.txpage__txtags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.txchip {
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  padding: 1px 7px; border-radius: 999px;
+  border: 1px solid rgba(22, 199, 132, .5); background: rgba(22, 199, 132, .12);
+  color: var(--brand); text-decoration: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+}
+.txchip:hover { background: rgba(22, 199, 132, .22); }
 
 /* Type / status tags */
 .txtag, .txstat {

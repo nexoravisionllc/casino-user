@@ -81,6 +81,9 @@ Object.assign(process.env, {
   FORTUNEGATE_RETURN_URL: 'http://localhost:5173/slot',
   FORTUNEGATE_DEFAULT_WIN_RATIO: '0',
   FORTUNEGATE_CALLBACK_TOKEN: CALLBACK_TOKEN,
+  // The self-hosted gateway stays off (whatever .env says) except in
+  // onchain.test.js, which sets ONCHAIN_TEST and its own local chains.
+  ...(process.env.ONCHAIN_TEST ? {} : { ONCHAIN_MNEMONIC: '', ONCHAIN_HOT_WALLET_KEY: '', BSC_RPC_URL: '', ETH_RPC_URL: '' }),
 });
 
 const { createApp } = await import('../src/app.js');
