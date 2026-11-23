@@ -39,6 +39,7 @@ function OnchainDeposit({ info, token, refreshUser }) {
   }, [info.address]);
 
   useEffect(() => {
+    if (info.devMode) return undefined; // demo: no real address to watch
     let stopped = false;
     let timer;
     let known = null;
@@ -59,7 +60,7 @@ function OnchainDeposit({ info, token, refreshUser }) {
     };
     load();
     return () => { stopped = true; clearTimeout(timer); };
-  }, [token, refreshUser]);
+  }, [token, refreshUser, info.devMode]);
 
   const copy = async () => {
     try {
@@ -92,13 +93,16 @@ function OnchainDeposit({ info, token, refreshUser }) {
         <span className="deposit__label">Your deposit address (same on every network above)</span>
         <div className="onchain__address">
           <input type="text" readOnly value={info.address} onFocus={(e) => e.target.select()} />
-          <button type="button" className="onchain__copy" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+          <button type="button" className="onchain__copy" onClick={copy} disabled={info.devMode}>{copied ? 'Copied' : 'Copy'}</button>
         </div>
       </label>
       <p className="deposit__hint">
         Minimum ${Number(info.minDepositUsd).toLocaleString('en-US')}; smaller transfers are added up until they reach it.
         Only send the coins listed above, on those networks. Other tokens sent here cannot be credited.
       </p>
+      {info.devMode ? (
+        <p className="deposit__msg deposit__msg--warn">Demo mode: deposit addresses are not available.</p>
+      ) : (
       <div className={`onchain__status ${checking ? 'is-checking' : ''}`} role="status" aria-live="polite">
         <span className="onchain__status-dot" aria-hidden="true" />
         <span>
@@ -109,6 +113,7 @@ function OnchainDeposit({ info, token, refreshUser }) {
               : 'Watching this address — your deposit appears here automatically once confirmed.'}
         </span>
       </div>
+      )}
       {fresh && (
         <p className="deposit__msg deposit__msg--ok">
           Received {fresh.coinAmount} {fresh.coin}: ${Number(fresh.amount).toLocaleString('en-US')} was added to your balance.

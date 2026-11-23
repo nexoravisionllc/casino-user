@@ -1,7 +1,8 @@
 import express from 'express';
+import { config } from '../config.js';
 import { db, isUniqueViolation } from '../db.js';
 import { createToken, currentUserId, requireAuth } from '../lib/auth.js';
-import { decimalJson, longJson } from '../lib/decimal.js';
+import { Decimal, decimalJson, longJson } from '../lib/decimal.js';
 import { bodyOf, isBlank } from '../lib/http.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 
@@ -67,7 +68,7 @@ async function findReferrer(referral) {
 
 /**
  * Submit a sign-up request. The user is created "Pending" (awaiting admin
- * approval) and is not signed in. Business outcomes are always HTTP 200; the
+ * approval), or "Active" in demo mode (DEV_MODE), and is not signed in. Business outcomes are always HTTP 200; the
  * body's `ok` flag reports the result.
  */
 router.post('/register', async (req, res) => {
@@ -94,21 +95,39 @@ router.post('/register', async (req, res) => {
   if (referrer.error) return res.json({ ok: false, message: referrer.error });
 
   const now = new Date();
+  // Demo mode: the account is approved at once and starts with a credit,
+  // recorded as a finished deposit.
+  const status = config.devMode ? 'Active' : 'Pending';
+  const credit = config.devMode ? Decimal.from(config.devSignupCredit).rounded(2) : null;
+  const passwordHash = await hashPassword(password);
   try {
-    await db.query(
-      `INSERT INTO Users (Name, LoginId, Password, PartnerId, Email, BankName, BankAccount, BankMaster,
-                          Balance, Point, Status, CreatedAt, UpdatedAt)
-       VALUES (:name, :loginId, :password, :partnerId, :email, :bankName, :bankAccount, :bankMaster,
-               0, 0, 'Pending', :now, :now)`,
-      {
-        name: nameInput.trim(), loginId, password: await hashPassword(password), partnerId: referrer.uid,
-        email, bankName, bankAccount, bankMaster, now,
-      });
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO Users (Name, LoginId, Password, PartnerId, Email, BankName, BankAccount, BankMaster,
+                            Balance, Point, Status, CreatedAt, UpdatedAt)
+         VALUES (:name, :loginId, :password, :partnerId, :email, :bankName, :bankAccount, :bankMaster,
+                 :balance, 0, :status, :now, :now)`,
+        {
+          name: nameInput.trim(), loginId, password: passwordHash, partnerId: referrer.uid,
+          email, bankName, bankAccount, bankMaster, balance: credit ? credit.toString() : '0', status, now,
+        });
+      if (credit?.isPositive) {
+        await tx.query(
+          `INSERT INTO Transactions (type, status, userid, managerid, amount, beforeamount, afteramount, memo, target_type, created_at, updated_at)
+           VALUES ('deposit', 'finished', :loginId, NULL, :amount, 0, :amount, 'Demo sign-up credit', 'user', :now, :now)`,
+          { loginId, amount: credit.toString(), now });
+      }
+    });
   } catch (err) {
     // Two sign-ups raced for the same login id.
     if (isUniqueViolation(err)) return res.json(taken);
     throw err;
   }
 
-  res.json({ ok: true, message: 'Your sign-up request has been submitted and is pending approval.' });
+  res.json({
+    ok: true,
+    message: config.devMode
+      ? `Your account is ready. You can sign in now.${credit?.isPositive ? ` Demo credit of $${credit.toString()} has been added to your account.` : ''}`
+      : 'Your sign-up request has been submitted and is pending approval.',
+  });
 });

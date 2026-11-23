@@ -224,6 +224,13 @@ export function explorerTxUrl(networkKey, hash) {
   return base ? `${base}/tx/${hash}` : null;
 }
 
+/** The explorer URL for an address on a network key, or null. */
+export function explorerAddressUrl(networkKey, address) {
+  const c = o.chains.find((x) => x.key === networkKey);
+  const base = c && EXPLORERS[c.chainId];
+  return base && isAddress(address ?? '') ? `${base}/address/${getAddress(address)}` : null;
+}
+
 /** Pull { network, hashes } out of a crypto Transaction memo, when it has them. */
 export function txRefsFromMemo(memo) {
   if (!memo) return null;

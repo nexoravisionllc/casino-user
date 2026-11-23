@@ -48,6 +48,7 @@ export default function WithdrawPage() {
   }, [token]);
 
   const cryptoReady = Boolean(crypto?.available && crypto.options?.length);
+  const devMode = Boolean(crypto?.devMode); // demo: no withdrawals of any kind
   const methods = cryptoReady || !crypto ? METHODS : METHODS.filter((m) => m.id !== 'crypto');
 
   const selectPreset = (v) => { setAmount(String(v)); setMsg(null); };
@@ -55,6 +56,7 @@ export default function WithdrawPage() {
   const submit = async () => {
     setMsg(null);
     if (!token) { openSignIn(); return; }
+    if (devMode) return;
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
       setMsg({ type: 'err', text: 'Enter an amount greater than zero.' });
@@ -172,8 +174,9 @@ export default function WithdrawPage() {
 
           {user && <p className="deposit__balance">Current balance: <b>${Number(user.balance ?? 0).toLocaleString('en-US')}</b></p>}
           {msg && <p className={`deposit__msg deposit__msg--${msg.type}`}>{msg.text}</p>}
+          {devMode && <p className="deposit__msg deposit__msg--warn">Demo mode: withdrawals are disabled.</p>}
 
-          <button className="deposit__request" onClick={submit} disabled={busy}>
+          <button className="deposit__request" onClick={submit} disabled={busy || devMode}>
             {busy ? 'Submitting…' : method === 'crypto' ? 'Request crypto withdrawal' : 'Request'}
           </button>
         </div>

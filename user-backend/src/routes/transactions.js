@@ -1,4 +1,5 @@
 import express from 'express';
+import { config } from '../config.js';
 import { db } from '../db.js';
 import { currentUserId, requireAuth } from '../lib/auth.js';
 import { Decimal, decimalJson, longJson } from '../lib/decimal.js';
@@ -83,6 +84,9 @@ function pendingRequest(type, label, checkFunds) {
 
 router.post('/deposit', pendingRequest('deposit', 'Deposit'));
 
+router.post('/withdraw', (req, res, next) => (config.devMode
+  ? res.json({ success: false, message: 'Withdrawals are disabled in demo mode.' })
+  : next()));
 router.post('/withdraw', pendingRequest('withdraw', 'Withdraw', (amount, user) =>
   (amount.greaterThan(user.balance) ? 'Withdrawal amount exceeds your available balance.' : null)));
 

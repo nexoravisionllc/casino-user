@@ -9,6 +9,7 @@ import { dbDate } from '../lib/format.js';
 import { bodyOf, jsonBody } from '../lib/http.js';
 import { settlePayout } from '../services/cryptoSettle.js';
 import * as onchain from '../services/onchain.js';
+import { walletStatus } from '../services/walletStatus.js';
 import { notifyWallet } from '../services/walletPush.js';
 
 /**
@@ -42,11 +43,13 @@ const findOption = (currency, network) =>
 /** Coins a player can withdraw to. */
 router.get('/crypto/withdraw/options', requireAuth, (req, res) => {
   const available = onchain.isConfigured();
-  res.json({ available, currency: 'USD', options: available ? onchain.payoutOptions() : [] });
+  // devMode: withdrawals (crypto and manual) are switched off for the showcase.
+  res.json({ available, devMode: config.devMode, currency: 'USD', options: available ? onchain.payoutOptions() : [] });
 });
 
 /** Request a crypto withdrawal; an admin reviews it like any other withdrawal. */
 router.post('/crypto/withdraw', requireAuth, jsonBody, async (req, res) => {
+  if (config.devMode) return res.json({ success: false, message: 'Withdrawals are disabled in demo mode.' });
   const body = bodyOf(req);
   const amount = body.decimal('Amount').rounded(2);
   const currency = body.str('Currency');
@@ -110,6 +113,16 @@ router.post('/internal/crypto/payout', jsonBody, async (req, res) => {
 });
 
 /**
+ * Server-to-server: read-only balances of the gateway's hot wallet and
+ * treasury, for the admin "Wallet" page. Authenticated with NOTIFY_SECRET.
+ */
+router.get('/internal/crypto/wallet', async (req, res) => {
+  const secret = config.adminBackend.notifySecret;
+  if (!secret || (req.get('x-notify-secret') ?? '') !== secret) return res.status(401).end();
+  res.json(await walletStatus());
+});
+
+/**
  * Accepted on-chain withdrawal: mark it "queued" for the worker, which signs and
  * sends it from the hot wallet within a poll interval. Safe to repeat. A request
  * left over from an earlier payment provider is refunded instead.
@@ -145,6 +158,16 @@ async function queueOnchainPayout(transactionUid) {
 
 /** The player's permanent deposit address and what it accepts. */
 router.get('/onchain/deposit-address', requireAuth, async (req, res) => {
+  // devMode: show the deposit page without handing out (or creating) a real address.
+  if (config.devMode) {
+    return res.json({
+      available: true,
+      devMode: true,
+      address: 'N/A',
+      minDepositUsd: Decimal.from(config.onchain.minDepositUsd),
+      networks: onchain.depositNetworks(),
+    });
+  }
   if (!onchain.isConfigured()) return res.json({ available: false });
   const [user] = await db.query('SELECT LoginId, Status FROM Users WHERE Uid = :uid LIMIT 1', { uid: currentUserId(req) });
   if (!user) return res.status(404).end();

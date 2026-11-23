@@ -1378,6 +1378,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .deposit__request:hover { background: var(--brand-2); }
 .deposit__request:disabled { opacity: .6; cursor: default; }
+.onchain__copy:disabled { opacity: .5; cursor: default; }
 .onchain__networks { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .onchain__network {
   display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;

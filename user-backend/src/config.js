@@ -52,6 +52,11 @@ const evmChain = (prefix, defaults) => ({
 });
 
 export const config = {
+  // Demo/showcase mode (DEV_MODE=true). See the DEV_MODE note in .env.example.
+  devMode: env.DEV_MODE === 'true',
+  // Starting balance (USD) every new sign-up gets while DEV_MODE is on.
+  devSignupCredit: env.DEV_SIGNUP_CREDIT || '200',
+
   root,
   host: env.HOST || 'localhost',
   port: int(env.PORT, 5090),
