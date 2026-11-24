@@ -114,3 +114,7 @@ export const LogoutIcon = (p) => (
 export const WalletIcon = (p) => (
   <svg {...base} {...p}><path d="M20 7H5a2 2 0 0 1 0-4h13v4" /><path d="M3 5v14a2 2 0 0 0 2 2h15V7" /><circle cx="16" cy="14" r="1.2" fill="currentColor" stroke="none" /></svg>
 );
+
+export const BellIcon = (p) => (
+  <svg {...base} {...p}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+);

@@ -7,6 +7,8 @@ import { router as auth } from './routes/auth.js';
 import { router as callback } from './routes/callback.js';
 import { router as games } from './routes/games.js';
 import { router as payments } from './routes/payments.js';
+import { router as notifications } from './routes/notifications.js';
+import { router as profile } from './routes/profile.js';
 import { router as transactions } from './routes/transactions.js';
 
 export function createApp() {
@@ -22,6 +24,8 @@ export function createApp() {
   app.use('/api/transactions', transactions);
   // Crypto deposits and withdrawals; each route parses its own body.
   app.use('/api/payments', payments);
+  app.use('/api/profile', jsonBody, profile);
+  app.use('/api/notifications', jsonBody, notifications);
   app.use('/callback', jsonBody, callback);
 
   app.use((req, res) => res.status(404).end());

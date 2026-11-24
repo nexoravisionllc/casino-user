@@ -18,8 +18,9 @@ const optionKey = (o) => `${o.currency}:${o.network}`;
 
 // /money/withdraw — mirrors the Deposit page. Submitting inserts a pending
 // withdraw transaction that the admin reviews on the Money > Withdraw page.
-// A crypto withdrawal also carries the wallet address; once the admin accepts
-// it, the payout is sent on-chain from the hot wallet.
+// A crypto withdrawal also carries the wallet address. The admin sends the
+// funds manually, then accepts (or rejects with a reason); the player is
+// emailed and their status updates live.
 export default function WithdrawPage() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
@@ -80,8 +81,8 @@ export default function WithdrawPage() {
         setMsg({
           type: 'ok',
           text: isCrypto
-            ? 'Withdrawal requested. Once it is approved, the crypto is sent to your wallet automatically.'
-            : res.message || 'Withdraw requested successfully.',
+            ? 'Withdrawal requested. After review, it takes 1–2 days for the crypto to be sent to your wallet. You will get an email once it is processed.'
+            : 'Withdrawal requested. After review, it takes 1–2 days to be processed. You will get an email once it is done.',
         });
         if (isCrypto) setAddress('');
       } else {

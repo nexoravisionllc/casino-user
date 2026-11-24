@@ -1378,6 +1378,13 @@ button { font-family: inherit; cursor: pointer; }
 }
 .deposit__request:hover { background: var(--brand-2); }
 .deposit__request:disabled { opacity: .6; cursor: default; }
+
+/* /account/profile: two stacked cards (details, password) on the deposit card styles. */
+.profile { flex-direction: column; gap: 16px; }
+.profile .deposit__field input { font-family: inherit; }
+.profile .deposit__field input:disabled { opacity: .65; cursor: not-allowed; }
+.profile__hint { color: var(--text-dim); font-size: 12px; }
+.profile__subtitle { font-size: 17px; font-weight: 700; margin: 0 0 14px; }
 .onchain__copy:disabled { opacity: .5; cursor: default; }
 .onchain__networks { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .onchain__network {
@@ -1473,6 +1480,7 @@ button { font-family: inherit; cursor: pointer; }
 .txstat--finished { color: var(--brand); border-color: rgba(22,199,132,.5); }
 .txstat--rejected { color: #ff6b6b; border-color: rgba(255,107,107,.5); }
 .txstat--restored { color: #8f86ff; border-color: rgba(143,134,255,.5); }
+.txpage__reason { display: block; margin-top: 4px; max-width: 240px; font-size: 11.5px; line-height: 1.35; color: #ff8a8a; white-space: normal; }
 
 /* Provider logos are mostly light artwork: keep their tiles dark in both themes. */
 :root[data-theme='light'] .provider-card,
@@ -1480,3 +1488,48 @@ button { font-family: inherit; cursor: pointer; }
 :root[data-theme='light'] .provider-card__name,
 :root[data-theme='light'] .sprov__logo span { color: #e9ecf1; }
 :root[data-theme='light'] .provider-item:hover .provider-card { background: #222730; }
+
+/* ---------------------------------------------------------- notification bell */
+.nbell { position: relative; }
+.nbell__btn { position: relative; }
+.nbell.is-open .nbell__btn { background: var(--panel-2); }
+.nbell__count {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-grid; place-items: center; line-height: 1; border: 2px solid var(--bg);
+}
+.nbell__panel {
+  position: absolute; top: calc(100% + 8px); right: 0; width: 340px; max-width: calc(100vw - 24px);
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+  z-index: 60; overflow: hidden;
+}
+.nbell__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.nbell__link { background: none; border: none; color: var(--brand); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 0; }
+.nbell__list { max-height: 360px; overflow-y: auto; }
+.nbell__item {
+  display: flex; gap: 10px; width: 100%; text-align: left; padding: 11px 14px; background: none; border: none;
+  border-bottom: 1px solid var(--border); color: var(--text); cursor: pointer;
+}
+.nbell__item:last-child { border-bottom: none; }
+.nbell__item:hover { background: var(--hover); }
+.nbell__item.is-unread { background: var(--brand-soft); }
+.nbell__dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--text-dim); }
+.nbell__item.is-unread .nbell__dot { background: var(--brand); }
+.nbell__item.is-unread .nbell__dot--security { background: var(--danger); }
+.nbell__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nbell__title { font-size: 13.5px; font-weight: 700; }
+.nbell__body { font-size: 13px; color: var(--text-dim); line-height: 1.4; overflow-wrap: anywhere; }
+.nbell__time { font-size: 11.5px; color: var(--text-dim); opacity: .8; }
+.nbell__empty { margin: 0; padding: 22px 16px; font-size: 13px; color: var(--text-dim); text-align: center; }
+.nbell__foot { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border); font-size: 12.5px; }
+.nbell__push {
+  width: 100%; padding: 9px; border-radius: 10px; border: 1px solid var(--brand); background: transparent;
+  color: var(--brand); font-weight: 700; cursor: pointer;
+}
+.nbell__push:hover:not(:disabled) { background: var(--brand-soft); }
+.nbell__push:disabled { opacity: .6; cursor: default; }
+.nbell__ok { color: var(--brand); }
+.nbell__muted { color: var(--text-dim); }
+@media (max-width: 560px) {
+  .nbell__panel { position: fixed; top: calc(var(--header-h) + 6px); right: 12px; left: 12px; width: auto; max-width: none; }
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Footer from '../components/Footer.jsx';
 import { apiGet } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { TRANSACTION_UPDATED_EVENT } from '../realtime/WalletRealtime.jsx';
 
 const money = (v) => (v == null ? null : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const pad = (n) => String(n).padStart(2, '0');
@@ -28,13 +29,17 @@ export default function TransactionPage() {
   const [from, setFrom] = useState(monthAgo);
   const [to, setTo] = useState(today);
 
+  // Load the history, and re-load it whenever an admin accepts or rejects one
+  // of the user's requests (pushed live over the wallet hub).
   useEffect(() => {
-    if (!token) return;
+    if (!token) return undefined;
     let cancelled = false;
-    apiGet('/transactions', token)
+    const load = () => apiGet('/transactions', token)
       .then((data) => { if (!cancelled) { setRows(data ?? []); setError(''); } })
       .catch((err) => { if (!cancelled) setError(err.message); });
-    return () => { cancelled = true; };
+    load();
+    window.addEventListener(TRANSACTION_UPDATED_EVENT, load);
+    return () => { cancelled = true; window.removeEventListener(TRANSACTION_UPDATED_EVENT, load); };
   }, [token]);
 
   const filtered = useMemo(() => rows.filter((t) => {
@@ -96,7 +101,12 @@ export default function TransactionPage() {
                     <td className="txpage__num"><b>${money(t.amount)}</b></td>
                     <td className="txpage__num">${money(t.beforeAmount)}</td>
                     <td className="txpage__num">{t.afterAmount == null ? '—' : `$${money(t.afterAmount)}`}</td>
-                    <td><span className={`txstat txstat--${t.status}`}>{(t.status || '').toUpperCase()}</span></td>
+                    <td>
+                      <span className={`txstat txstat--${t.status}`}>{(t.status || '').toUpperCase()}</span>
+                      {t.status === 'rejected' && t.rejectReason && (
+                        <span className="txpage__reason">Reason: {t.rejectReason}</span>
+                      )}
+                    </td>
                     <td className="txpage__time">{fmtTime(t.createdAt)}</td>
                   </tr>
                 ))}

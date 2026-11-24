@@ -185,3 +185,25 @@ test('unknown routes are an empty 404', async () => {
   assert.equal(res.status, 404);
   assert.equal(res.text, '');
 });
+
+test('auto-approve sign-ups: off by default, then new sign-ups are Active and can sign in', async () => {
+  const signUp = (loginId) => post('/api/auth/register', { name: 'Auto', loginId, password: 'pass-1234' });
+  const statusOf = async (loginId) => (await db.query('SELECT Status FROM Users WHERE LoginId = :loginId', { loginId }))[0].Status;
+
+  const before = await signUp('manual1');
+  assert.match(before.json.message, /pending approval/);
+  assert.equal(await statusOf('manual1'), 'Pending');
+
+  await db.query("INSERT INTO AppSettings (name, value, updated_at) VALUES ('autoApproveSignups', 'true', NOW())");
+  const auto = await signUp('auto1');
+  assert.equal(auto.json.ok, true);
+  assert.match(auto.json.message, /You can sign in now/);
+  assert.equal(await statusOf('auto1'), 'Active');
+  assert.equal((await post('/api/auth/login', { loginId: 'auto1', password: 'pass-1234' })).status, 200);
+  assert.equal((await db.query('SELECT Balance FROM Users WHERE LoginId = :l', { l: 'auto1' }))[0].Balance, '0.00', 'no demo credit outside DEV_MODE');
+  assert.equal(await statusOf('manual1'), 'Pending', 'earlier sign-ups are not touched');
+
+  await db.query("UPDATE AppSettings SET value = 'false' WHERE name = 'autoApproveSignups'");
+  await signUp('manual2');
+  assert.equal(await statusOf('manual2'), 'Pending');
+});

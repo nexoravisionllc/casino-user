@@ -109,8 +109,8 @@ A withdrawal is also a **request** that the operator processes.
 
 1. Open **Withdraw** from the account menu.
 2. Enter an amount no larger than your current balance. A larger amount shows *Withdrawal amount exceeds your available balance.*
-3. Click **Request**. You'll see *Withdraw requested successfully.*
-4. When the operator **accepts** it, the amount is taken from your balance and paid to the bank details on your account.
+3. Click **Request**. After review, a withdrawal takes 1–2 days to process.
+4. When the operator **accepts** it, the amount is taken from your balance and paid to your wallet address (crypto) or the bank details on your account. If it is **rejected**, the reason is shown under **Transactions**. You get an email either way.
 
 Rules:
 

@@ -100,6 +100,14 @@ export const config = {
     callbackToken: env.FORTUNEGATE_CALLBACK_TOKEN ?? '',
   },
 
+  // Web Push (browser notifications to players). Push is off while the keys
+  // are blank; in-site notifications still work.
+  webPush: {
+    publicKey: (env.VAPID_PUBLIC_KEY || '').trim(),
+    privateKey: (env.VAPID_PRIVATE_KEY || '').trim(),
+    subject: (env.VAPID_SUBJECT || '').trim() || 'mailto:admin@example.com',
+  },
+
   // Self-hosted BSC / Ethereum gateway (services/onchain) for crypto deposits
   // and withdrawals. Crypto is unavailable until it is configured.
   onchain: {

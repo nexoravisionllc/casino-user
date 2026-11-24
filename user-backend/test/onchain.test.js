@@ -203,59 +203,28 @@ test('self-hosted BSC / ETH gateway, end to end', async (t) => {
     assert.equal((await ask({ currency: 'USDC' })).json.success, false, 'unsupported coin');
   });
 
-  await t.test('an accepted USDT withdrawal is paid from the hot wallet', async () => {
+  await t.test('withdrawals are never paid out automatically; the admin pays them by hand', async () => {
     await (await bsc.usdt.mint(new Wallet(HOT_KEY).address, parseUnits('1000', 18))).wait();
+    const before = await balanceOf('user');
     const res = await post('/api/payments/crypto/withdraw', { amount: 20, currency: 'USDT', network: 'BSC', address: PLAYER_WALLET.toLowerCase() }, { token });
     assert.equal(res.json.success, true);
     const uid = Number(res.json.uid);
 
-    const early = await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
-    assert.equal(early.json.success, false, 'not accepted yet');
+    // The former queue-a-payout endpoint is gone.
+    const gone = await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
+    assert.equal(gone.status, 404);
+
+    // Even a payout left "queued" by the old flow is not sent by the worker.
     await acceptAsAdmin(uid);
-    const queued = await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
-    assert.equal(queued.json.status, 'queued');
-    const again = await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
-    assert.equal(again.json.message, 'Payout already queued.');
-
-    await runCycle();
-    await runCycle();
-    assert.equal((await txsOf('payout')).length, 1, 'signed once');
-    await settleAll(2);
-
-    assert.equal(await tokenBalance(bsc, PLAYER_WALLET), parseUnits('20', 18));
-    const [payment] = await db.query('SELECT * FROM CryptoPayments WHERE transaction_uid = :uid', { uid });
-    assert.equal(`${payment.status} ${payment.payer_amount} ${payment.address}`, `paid 20 ${PLAYER_WALLET}`);
-    const [request] = await db.query('SELECT * FROM Transactions WHERE uid = :uid', { uid });
-    assert.equal(request.status, 'finished');
-    assert.ok(request.memo.includes(payment.txid));
-    assert.equal(await balanceOf('user'), '1097.50');
-  });
-
-  await t.test('a native withdrawal is converted at the feed price', async () => {
-    const res = await post('/api/payments/crypto/withdraw', { amount: 35, currency: 'ETH', network: 'ETH', address: PLAYER_WALLET }, { token });
-    const uid = Number(res.json.uid);
-    await acceptAsAdmin(uid);
-    await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
+    await db.query("UPDATE CryptoPayments SET status = 'queued' WHERE transaction_uid = :uid", { uid });
     await settleAll(3);
-    assert.equal(await eth.provider.getBalance(PLAYER_WALLET), parseEther('0.0175'), '$35 at $2000');
+    assert.equal((await txsOf('payout')).length, 0, 'nothing signed');
+    assert.equal(await tokenBalance(bsc, PLAYER_WALLET), 0n);
+    const [payment] = await db.query('SELECT status FROM CryptoPayments WHERE transaction_uid = :uid', { uid });
+    assert.equal(payment.status, 'queued');
     const [request] = await db.query('SELECT status FROM Transactions WHERE uid = :uid', { uid });
-    assert.equal(request.status, 'finished');
-  });
-
-  await t.test('a withdrawal the hot wallet cannot cover waits, then goes out once funded', async () => {
-    const res = await post('/api/payments/crypto/withdraw', { amount: 900, currency: 'USDT', network: 'ETH', address: PLAYER_WALLET }, { token });
-    const uid = Number(res.json.uid);
-    await acceptAsAdmin(uid);
-    await post('/api/payments/internal/crypto/payout', { transactionUid: uid }, { headers: { 'X-Notify-Secret': NOTIFY_SECRET } });
-    await settleAll(2);
-    let [payment] = await db.query('SELECT status FROM CryptoPayments WHERE transaction_uid = :uid', { uid });
-    assert.equal(payment.status, 'queued', 'the hot wallet holds no ETH USDT');
-
-    await (await eth.usdt.mint(new Wallet(HOT_KEY).address, parseUnits('900', 6))).wait();
-    await settleAll(3);
-    [payment] = await db.query('SELECT status FROM CryptoPayments WHERE transaction_uid = :uid', { uid });
-    assert.equal(payment.status, 'paid');
-    assert.equal(await tokenBalance(eth, PLAYER_WALLET), parseUnits('900', 6));
+    assert.equal(request.status, 'processing');
+    assert.equal(Number(await balanceOf('user')), Number(before) - 20, 'only the accept debited the balance');
   });
 
   await t.test('a stale price feed holds native deposits back instead of guessing', async () => {

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useModal } from '../context/ModalContext.jsx';
+import NotificationBell from './NotificationBell.jsx';
 import {
   MenuIcon, ChatIcon, PiggyIcon, PointPIcon, ChevronDownIcon, LogoutIcon,
-  DepositIcon, WithdrawIcon, ConvertIcon, ReceiptIcon,
+  DepositIcon, WithdrawIcon, ConvertIcon, ReceiptIcon, UserIcon,
 } from './Icons.jsx';
 
 // Formats a numeric balance/point with two decimals and thousands separators.
@@ -15,8 +16,9 @@ function formatAmount(value) {
   });
 }
 
-// Money actions live in the profile dropdown.
+// Account and money actions live in the profile dropdown.
 const moneyItems = [
+  { label: 'My profile', Icon: UserIcon, to: '/account/profile' },
   { label: 'Deposit', Icon: DepositIcon, to: '/money/deposit' },
   { label: 'Withdraw', Icon: WithdrawIcon, to: '/money/withdraw' },
   { label: 'Point Convert', Icon: ConvertIcon, to: '/money/point-convert' },
@@ -147,6 +149,7 @@ export default function Header({ onToggleSidebar }) {
             <button className="icon-btn" aria-label="Support chat">
               <ChatIcon width={18} height={18} />
             </button>
+            <NotificationBell />
             <UserMenu user={user} onLogout={logout} />
           </>
         ) : (

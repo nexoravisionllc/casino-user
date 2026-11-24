@@ -1,5 +1,6 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost } from '../api/client.js';
+import { disablePush, syncPush } from '../notifications/push.js';
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = 'auth';
@@ -22,6 +23,7 @@ export function AuthProvider({ children }) {
   const login = async (loginId, password) => {
     const data = await apiPost('/auth/login', { loginId, password });
     setAuth({ token: data.token, user: data.user });
+    syncPush(data.token); // a browser that allowed push keeps it, now for this account
     return data.user;
   };
 
@@ -40,7 +42,12 @@ export function AuthProvider({ children }) {
     });
   };
 
-  const logout = () => setAuth(null);
+  // Signing out also stops push on this browser, so a shared device does not
+  // keep receiving this player's notifications.
+  const logout = () => {
+    disablePush(auth?.token);
+    setAuth(null);
+  };
 
   // Merge live balance/point (from the SignalR wallet hub) into the stored user.
   const updateWallet = useCallback(({ balance, point }) => {

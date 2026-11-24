@@ -10,6 +10,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 // the admin backend's CORS_ORIGINS).
 const HUB_URL = import.meta.env.VITE_WALLET_HUB_URL || '/hubs/wallet';
 
+// Fired on window when an admin accepts / rejects one of the user's requests,
+// with { uid, type, status, rejectReason } as the event detail.
+export const TRANSACTION_UPDATED_EVENT = 'casino:transaction-updated';
+
 // While a user is signed in, keep a live connection to the wallet hub and push
 // balance/point changes straight into the auth state (so the header updates).
 export default function WalletRealtime() {
@@ -26,6 +30,11 @@ export default function WalletRealtime() {
 
     conn.on('walletUpdated', (data) => {
       if (data) updateWallet({ balance: data.balance, point: data.point });
+      window.dispatchEvent(new Event('casino:notifications-changed'));
+    });
+
+    conn.on('transactionUpdated', (data) => {
+      window.dispatchEvent(new CustomEvent(TRANSACTION_UPDATED_EVENT, { detail: data ?? null }));
     });
 
     let active = true;

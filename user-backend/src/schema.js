@@ -77,11 +77,53 @@ export const TABLES = {
       userid       VARCHAR(64)   NOT NULL,
       managerid    VARCHAR(64)   NULL,
       memo         VARCHAR(512)  NULL,
+      reject_reason VARCHAR(512) NULL,
       target_type  VARCHAR(16)   NULL,
       created_at   DATETIME(6)   NOT NULL,
       updated_at   DATETIME(6)   NULL,
       KEY IX_Transactions_userid (userid),
       KEY IX_Transactions_type (type)
+    ) ${TABLE_OPTIONS}`,
+
+  // Site-wide options set from the admin Settings page, as name -> value
+  // (e.g. autoApproveSignups = 'true'). Shared by both backends.
+  AppSettings: `
+    CREATE TABLE IF NOT EXISTS AppSettings (
+      name       VARCHAR(64)  NOT NULL PRIMARY KEY,
+      value      VARCHAR(512) NOT NULL,
+      updated_at DATETIME(6)  NOT NULL,
+      updated_by VARCHAR(64)  NULL
+    ) ${TABLE_OPTIONS}`,
+
+  // Messages to players about important account events (withdrawal sent,
+  // deposit credited, ...), shown under the bell on the player site and also
+  // sent as Web Push. Written by services/notify.js.
+  Notifications: `
+    CREATE TABLE IF NOT EXISTS Notifications (
+      uid        BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      userid     VARCHAR(64)  NOT NULL,
+      type       VARCHAR(32)  NOT NULL,
+      title      VARCHAR(128) NOT NULL,
+      body       VARCHAR(512) NOT NULL,
+      url        VARCHAR(256) NULL,
+      read_at    DATETIME(6)  NULL,
+      created_at DATETIME(6)  NOT NULL,
+      KEY IX_Notifications_user (userid, uid)
+    ) ${TABLE_OPTIONS}`,
+
+  // Browsers that allowed push notifications, one row per device/browser.
+  PushSubscriptions: `
+    CREATE TABLE IF NOT EXISTS PushSubscriptions (
+      uid          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      userid       VARCHAR(64)  NOT NULL,
+      endpoint     VARCHAR(768) NOT NULL,
+      p256dh       VARCHAR(128) NOT NULL,
+      auth         VARCHAR(64)  NOT NULL,
+      user_agent   VARCHAR(256) NULL,
+      created_at   DATETIME(6)  NOT NULL,
+      last_used_at DATETIME(6)  NULL,
+      UNIQUE KEY UX_PushSubscriptions_endpoint (endpoint),
+      KEY IX_PushSubscriptions_user (userid)
     ) ${TABLE_OPTIONS}`,
 
   PointHistory: `
@@ -239,6 +281,8 @@ export const TABLES = {
 const EXTRA_COLUMNS = [
   { table: 'Users', column: 'UserCode', ddl: 'BIGINT NULL' },
   { table: 'Partners', column: 'ReferralId', ddl: 'VARCHAR(64) NULL' },
+  // Written by the admin backend when it rejects a request; shown to the player.
+  { table: 'Transactions', column: 'reject_reason', ddl: 'VARCHAR(512) NULL' },
 ];
 
 const databaseName = () =>
@@ -267,6 +311,16 @@ async function ensureDatabase() {
   }
 }
 
+// The admin backend adds the same columns to the shared database; when both
+// start at once the other may add one between the check and the ALTER.
+async function addColumn(sql) {
+  try {
+    await db.query(sql);
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+  }
+}
+
 export async function ensureSchema() {
   await ensureDatabase();
 
@@ -277,7 +331,7 @@ export async function ensureSchema() {
       `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column`,
       { table, column });
-    if (Number(n) === 0) await db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    if (Number(n) === 0) await addColumn(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
   }
 
   // txid held one hash (VARCHAR(128)); a deposit made of several transfers lists

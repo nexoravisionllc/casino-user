@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS Transactions (
   userid       VARCHAR(64)   NOT NULL,
   managerid    VARCHAR(64)   NULL,
   memo         VARCHAR(512)  NULL,
+  reject_reason VARCHAR(512) NULL,
   target_type  VARCHAR(16)   NULL,
   created_at   DATETIME(6)   NOT NULL,
   updated_at   DATETIME(6)   NULL,

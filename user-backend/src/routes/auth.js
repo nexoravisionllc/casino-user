@@ -4,6 +4,7 @@ import { db, isUniqueViolation } from '../db.js';
 import { createToken, currentUserId, requireAuth } from '../lib/auth.js';
 import { Decimal, decimalJson, longJson } from '../lib/decimal.js';
 import { bodyOf, isBlank } from '../lib/http.js';
+import { log } from '../lib/log.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 
 export const router = express.Router();
@@ -55,6 +56,21 @@ router.get('/me', requireAuth, async (req, res) => {
   });
 });
 
+/**
+ * True when the admin turned on "auto-approve sign-ups" (Settings page,
+ * AppSettings.autoApproveSignups). Falls back to manual approval if the
+ * setting cannot be read.
+ */
+async function autoApproveSignups() {
+  try {
+    const [row] = await db.query("SELECT value FROM AppSettings WHERE name = 'autoApproveSignups' LIMIT 1");
+    return row?.value === 'true';
+  } catch (err) {
+    log.warn('Could not read the auto-approve sign-up setting; new sign-ups wait for approval.', err);
+    return false;
+  }
+}
+
 // A blank referral attaches the user under the administrator (the only partner
 // with no parent); otherwise the referral code must match a partner.
 async function findReferrer(referral) {
@@ -68,7 +84,8 @@ async function findReferrer(referral) {
 
 /**
  * Submit a sign-up request. The user is created "Pending" (awaiting admin
- * approval), or "Active" in demo mode (DEV_MODE), and is not signed in. Business outcomes are always HTTP 200; the
+ * approval), or "Active" when the admin turned on auto-approval or in demo
+ * mode (DEV_MODE), and is not signed in. Business outcomes are always HTTP 200; the
  * body's `ok` flag reports the result.
  */
 router.post('/register', async (req, res) => {
@@ -97,7 +114,8 @@ router.post('/register', async (req, res) => {
   const now = new Date();
   // Demo mode: the account is approved at once and starts with a credit,
   // recorded as a finished deposit.
-  const status = config.devMode ? 'Active' : 'Pending';
+  const approved = config.devMode || (await autoApproveSignups());
+  const status = approved ? 'Active' : 'Pending';
   const credit = config.devMode ? Decimal.from(config.devSignupCredit).rounded(2) : null;
   const passwordHash = await hashPassword(password);
   try {
@@ -128,6 +146,8 @@ router.post('/register', async (req, res) => {
     ok: true,
     message: config.devMode
       ? `Your account is ready. You can sign in now.${credit?.isPositive ? ` Demo credit of $${credit.toString()} has been added to your account.` : ''}`
-      : 'Your sign-up request has been submitted and is pending approval.',
+      : approved
+        ? 'Your account is ready. You can sign in now.'
+        : 'Your sign-up request has been submitted and is pending approval.',
   });
 });

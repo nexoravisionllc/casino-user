@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
-import { Contract, Transaction, getAddress, id as eventTopic, zeroPadValue } from 'ethers';
+import { Contract, Transaction, id as eventTopic, zeroPadValue } from 'ethers';
 import { config } from '../config.js';
 import { db } from '../db.js';
 import { Decimal } from '../lib/decimal.js';
 import { log } from '../lib/log.js';
 import { settlePayout } from './cryptoSettle.js';
 import {
-  ERC20, chains, depositWallet, ensureReady, formatRaw, fromUsd, hotWallet, nativePrice, sweepAddress, toUsd,
+  ERC20, chains, depositWallet, ensureReady, formatRaw, hotWallet, nativePrice, sweepAddress, toUsd,
 } from './onchain.js';
+import { notifyEvent } from './notify.js';
 import { notifyWallet } from './walletPush.js';
 
 /**
@@ -20,16 +21,16 @@ import { notifyWallet } from './walletPush.js';
  * 2. deposit - each watched address's balance at the confirmed block is
  *              compared with its accounted balance; the excess is credited to
  *              the player (once worth ONCHAIN_MIN_DEPOSIT_USD).
- * 3. payout  - withdrawals an admin accepted ("queued") are signed and sent
- *              from the hot wallet.
- * 4. sweep   - credited balances worth <CHAIN>_SWEEP_MIN_USD are moved to the
+ * 3. sweep   - credited balances worth <CHAIN>_SWEEP_MIN_USD are moved to the
  *              treasury; token sweeps get their gas topped up first.
  *
  * Step 1 runs to completion before step 2, with the same confirmed block, so
  * the accounted balances always match what that block shows except for real
- * deposits. Every transaction is stored (signed) before it is broadcast, and a
- * withdrawal leaves "queued" in the same database transaction, so a crash can
- * only lead to a rebroadcast of the same transaction, never a second payout.
+ * deposits. Every transaction is stored (signed) before it is broadcast, so a
+ * crash can only lead to a rebroadcast of the same transaction.
+ *
+ * Withdrawals are not sent from here: the admin pays them manually from their
+ * own wallet. Step 1 still settles a payout that an older version broadcast.
  */
 
 const o = config.onchain;
@@ -292,6 +293,7 @@ async function scanDeposits(rt, confirmed, price) {
     if (usd.lessThan(minUsd)) continue;
     const outcome = await credit(rt, c, known, balance, usd, confirmed);
     if (outcome.wallet) await notifyWallet(outcome.wallet.loginId, outcome.wallet.balance, outcome.wallet.point);
+    if (outcome.deposit) await notifyEvent(outcome.wallet.loginId, 'crypto-deposit', outcome.deposit);
   }
   if (full) lastFullScan.set(chainKey, Date.now());
 }
@@ -340,7 +342,10 @@ async function credit(rt, { userid, address, asset }, known, balance, usd, confi
       });
 
     log.info(`Crypto deposit of ${coins} ${asset.symbol} on ${chainKey} credited ${usd} to ${user.LoginId}.`);
-    return { wallet: { loginId: user.LoginId, balance: after, point: Decimal.from(user.Point) } };
+    return {
+      wallet: { loginId: user.LoginId, balance: after, point: Decimal.from(user.Point) },
+      deposit: { coins, coin: asset.symbol, amount: Number(usd.toString()) },
+    };
   });
 }
 
@@ -368,72 +373,6 @@ const spend = (budget, symbol, amount) => budget.set(symbol, budget.get(symbol) 
 const transferRequest = (asset, to, raw) => (asset.native
   ? { to, value: raw, data: '0x' }
   : { to: asset.address, value: 0n, data: ERC20.encodeFunctionData('transfer', [to, raw]) });
-
-async function refundPayout(payment, reason) {
-  const outcome = await db.transaction(async (tx) => {
-    const [locked] = await tx.query(
-      'SELECT uid, order_id, userid, amount, currency, status, transaction_uid FROM CryptoPayments WHERE uid = :uid FOR UPDATE',
-      { uid: payment.uid });
-    if (locked.status !== 'queued') return {};
-    await tx.query("UPDATE CryptoPayments SET status = 'error', updated_at = :now WHERE uid = :uid", { now: new Date(), uid: locked.uid });
-    return settlePayout(tx, locked, 'error', reason);
-  });
-  if (outcome.wallet) await notifyWallet(outcome.wallet.loginId, outcome.wallet.balance, outcome.wallet.point);
-}
-
-async function sendPayouts(rt, price, budget) {
-  const chainKey = rt.cfg.key;
-  const queued = await db.query(
-    `SELECT uid, order_id, amount, payer_currency, address FROM CryptoPayments
-     WHERE provider = :provider AND direction = 'withdraw' AND status = 'queued' AND network = :chainKey ORDER BY uid`,
-    { provider: PROVIDER, chainKey });
-  if (!queued.length) return;
-  const hot = hotWallet().connect(rt.provider);
-
-  for (const payment of queued) {
-    const asset = rt.assets.find((a) => a.symbol === payment.payer_currency);
-    if (!asset) {
-      await refundPayout(payment, `${payment.payer_currency} on ${chainKey} is no longer supported`);
-      continue;
-    }
-    const raw = fromUsd(asset, Decimal.from(payment.amount), price);
-    if (raw == null) {
-      warnThrottled(`price:${chainKey}`, `No fresh ${rt.cfg.native}/USD price on ${chainKey}; ${rt.cfg.native} withdrawals wait until there is one.`);
-      continue;
-    }
-    if (raw <= 0n) {
-      await refundPayout(payment, 'amount too small');
-      continue;
-    }
-    const to = getAddress(payment.address);
-    const request = transferRequest(asset, to, raw);
-    const fees = await feeParams(rt);
-    const gasLimit = await estimateGas(rt, { ...request, from: hot.address }, asset.native ? 21000n : 120000n);
-    const gasCost = gasLimit * fees.perGas;
-
-    const nativeNeeded = gasCost + (asset.native ? raw : 0n);
-    if (budget.get(rt.cfg.native) < nativeNeeded || (!asset.native && budget.get(asset.symbol) < raw)) {
-      warnThrottled(`funds:${chainKey}:${asset.symbol}`,
-        `Hot wallet ${hot.address} on ${chainKey} cannot pay ${formatRaw(raw, asset.decimals)} ${asset.symbol} plus gas; withdrawals wait until it is funded.`);
-      continue;
-    }
-
-    const hash = await send(rt, hot, { ...request, gasLimit, ...feeFields(fees) },
-      { kind: 'payout', to, asset: asset.symbol, amount: raw, paymentUid: payment.uid },
-      async (tx, txHash) => {
-        const [locked] = await tx.query('SELECT status FROM CryptoPayments WHERE uid = :uid FOR UPDATE', { uid: payment.uid });
-        if (locked.status !== 'queued') return false;
-        await tx.query(
-          "UPDATE CryptoPayments SET status = 'sent', txid = :txHash, payer_amount = :coins, updated_at = :now WHERE uid = :uid",
-          { txHash, coins: formatRaw(raw, asset.decimals), now: new Date(), uid: payment.uid });
-        return true;
-      });
-    if (!hash) continue;
-    spend(budget, rt.cfg.native, nativeNeeded);
-    if (!asset.native) spend(budget, asset.symbol, raw);
-    log.info(`Crypto withdrawal ${payment.order_id}: sent ${formatRaw(raw, asset.decimals)} ${asset.symbol} on ${chainKey} to ${to} (${hash}).`);
-  }
-}
 
 // ------------------------------------------------------------------ sweeps
 
@@ -553,7 +492,6 @@ export async function runCycle() {
       const unmined = await settle(rt, confirmed);
       await scanDeposits(rt, confirmed, price);
       const budget = await hotBudget(rt, unmined);
-      await sendPayouts(rt, price, budget);
       await sweep(rt, price, budget);
     } catch (err) {
       warnThrottled(`cycle:${chainKey}`, `On-chain worker cycle for ${chainKey} failed; retrying.`, err);

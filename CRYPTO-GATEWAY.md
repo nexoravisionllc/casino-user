@@ -20,16 +20,15 @@ stablecoins at 1:1, and BNB/ETH at the Chainlink price. Transfers under
 `ONCHAIN_SWEEP_TO`. A deposit address that holds tokens but no gas first gets a
 small BNB/ETH top-up from the hot wallet.
 
-**Withdrawals.** The flow is unchanged for players and admins: the player
-requests one, an admin accepts it under Money › Withdraw, and the worker sends it
-from the hot wallet within one poll. If the hot wallet is short, the withdrawal
-waits ("queued") and a warning is logged until the wallet is funded. A transfer
-that reverts on-chain is refunded to the player automatically.
+**Withdrawals are paid manually.** The player requests one with their wallet
+address. The admin sends the coins to that address from their own wallet, then
+accepts it under Money › Withdrawals (optionally with the tx hash), or rejects it
+with a reason. The player is emailed either way. The gateway sends nothing:
+there is no automatic payout.
 
-**Safety.** Every transaction is signed and saved in `OnchainTxs` *before* it is
-broadcast, and a withdrawal leaves "queued" in the same database transaction. A
-crash or restart can therefore only rebroadcast the same transaction, never pay
-twice.
+**Safety.** Every transaction (sweeps, gas top-ups) is signed and saved in
+`OnchainTxs` *before* it is broadcast, so a crash or restart can only rebroadcast
+the same transaction.
 
 ## Setup
 
@@ -64,10 +63,7 @@ token and price-feed addresses.
   running, because the two would fight over nonces. To move funds out, use a
   different wallet: make the treasury `ONCHAIN_SWEEP_TO` and top the hot wallet
   up from it.
-- Logs to watch: `cannot pay … withdrawals wait` (fund the hot wallet),
-  `still unmined after 30 minutes` (gas spike or RPC problem), `was dropped` and
+- Logs to watch: `still unmined after 30 minutes` (gas spike or RPC problem), `was dropped` and
   `does not match HD index` (something is wrong: investigate before going on).
-- The admin's "Send payout" button on a processing crypto withdrawal is safe to
-  press again. It reports "Payout already queued/sent".
 - Tests: `npm test` in `user-backend` runs `test/onchain.test.js` against two
   local chains (ganache).

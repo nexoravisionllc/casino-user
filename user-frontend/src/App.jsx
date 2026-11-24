@@ -9,6 +9,7 @@ import DepositPage from './pages/DepositPage.jsx';
 import WithdrawPage from './pages/WithdrawPage.jsx';
 import PointConvertPage from './pages/PointConvertPage.jsx';
 import TransactionPage from './pages/TransactionPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AuthGate from './components/AuthGate.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/money/withdraw" element={<RequireAuth><WithdrawPage /></RequireAuth>} />
           <Route path="/money/point-convert" element={<RequireAuth><PointConvertPage /></RequireAuth>} />
           <Route path="/money/transaction" element={<RequireAuth><TransactionPage /></RequireAuth>} />
+          <Route path="/account/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
           {/* Auth now opens as a modal; legacy paths fall back to the home page. */}
           <Route path="*" element={<Home />} />
         </Routes>

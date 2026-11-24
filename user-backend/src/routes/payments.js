@@ -22,11 +22,10 @@ import { notifyWallet } from '../services/walletPush.js';
  * Withdrawal:
  * 1. POST /crypto/withdraw records a pending "withdraw" Transaction plus the
  *    wallet address, for an admin to review like any withdrawal.
- * 2. The admin backend accepts it: it debits the balance, sets the request to
- *    "processing" and calls POST /internal/crypto/payout, which marks the
- *    payout "queued".
- * 3. The on-chain worker sends it from the hot wallet; a transfer that reverts
- *    returns the amount to the player and marks the request "failed".
+ * 2. The admin sends the coins manually from their own wallet, then accepts
+ *    the request in the admin panel: it debits the balance, finishes the
+ *    request and marks the payout "paid". Or the admin rejects it with a
+ *    reason. Either way the player is emailed. Nothing is sent automatically.
  */
 export const router = express.Router();
 
@@ -103,16 +102,6 @@ router.post('/crypto/withdraw', requireAuth, jsonBody, async (req, res) => {
 });
 
 /**
- * Server-to-server: queue the payout for a withdrawal the admin just accepted
- * (status "processing"). Authenticated with the shared NOTIFY_SECRET.
- */
-router.post('/internal/crypto/payout', jsonBody, async (req, res) => {
-  const secret = config.adminBackend.notifySecret;
-  if (!secret || (req.get('x-notify-secret') ?? '') !== secret) return res.status(401).end();
-  res.json(await queueOnchainPayout(bodyOf(req).long('transactionUid')));
-});
-
-/**
  * Server-to-server: read-only balances of the gateway's hot wallet and
  * treasury, for the admin "Wallet" page. Authenticated with NOTIFY_SECRET.
  */
@@ -121,38 +110,6 @@ router.get('/internal/crypto/wallet', async (req, res) => {
   if (!secret || (req.get('x-notify-secret') ?? '') !== secret) return res.status(401).end();
   res.json(await walletStatus());
 });
-
-/**
- * Accepted on-chain withdrawal: mark it "queued" for the worker, which signs and
- * sends it from the hot wallet within a poll interval. Safe to repeat. A request
- * left over from an earlier payment provider is refunded instead.
- */
-async function queueOnchainPayout(transactionUid) {
-  const outcome = await db.transaction(async (tx) => {
-    const [payment] = await tx.query(
-      `SELECT uid, order_id, userid, amount, currency, provider, status, transaction_uid FROM CryptoPayments
-       WHERE transaction_uid = :transactionUid AND direction = 'withdraw' FOR UPDATE`,
-      { transactionUid });
-    if (!payment) return { reply: { success: false, message: 'This is not a crypto withdrawal.' } };
-    const [request] = await tx.query('SELECT status FROM Transactions WHERE uid = :uid', { uid: transactionUid });
-    if (payment.status !== 'requested') {
-      return { reply: { success: true, message: `Payout already ${payment.status === 'queued' ? 'queued' : `sent (${payment.status})`}.`, status: payment.status } };
-    }
-    if (request?.status !== 'processing') return { reply: { success: false, message: 'The withdrawal must be accepted first.' } };
-    const now = new Date();
-    if (payment.provider !== PROVIDER || !onchain.isConfigured()) {
-      const reason = payment.provider !== PROVIDER ? 'provider no longer supported' : 'not configured';
-      await tx.query("UPDATE CryptoPayments SET status = 'error', updated_at = :now WHERE uid = :uid", { now, uid: payment.uid });
-      const settled = await settlePayout(tx, payment, 'error', reason);
-      const why = payment.provider !== PROVIDER ? 'This withdrawal was made through a payment provider that is no longer supported.' : 'On-chain payouts are not configured.';
-      return { ...settled, reply: { success: false, message: `${why} The amount was returned to the member.` } };
-    }
-    await tx.query("UPDATE CryptoPayments SET status = 'queued', updated_at = :now WHERE uid = :uid", { now, uid: payment.uid });
-    return { reply: { success: true, message: 'Withdraw accepted; the crypto payout is queued and goes out on-chain shortly.', status: 'queued' } };
-  });
-  if (outcome.wallet) await notifyWallet(outcome.wallet.loginId, outcome.wallet.balance, outcome.wallet.point);
-  return outcome.reply;
-}
 
 // ------------------------------------------------------- on-chain deposits
 

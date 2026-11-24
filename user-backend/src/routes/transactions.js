@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
   if (!user) return res.json([]);
 
   const rows = await db.query(
-    `SELECT uid, type, amount, beforeamount, afteramount, status, managerid, memo, created_at
+    `SELECT uid, type, amount, beforeamount, afteramount, status, managerid, memo, reject_reason, created_at, updated_at
      FROM Transactions WHERE userid = :loginId ORDER BY uid DESC`,
     { loginId: user.LoginId });
 
@@ -43,8 +43,10 @@ router.get('/', async (req, res) => {
     status: t.status,
     managerId: t.managerid ?? null,
     memo: t.memo ?? null,
+    rejectReason: t.reject_reason ?? null,
     txLinks: txRefsFromMemo(t.memo) ?? [],
     createdAt: dbDate(t.created_at),
+    updatedAt: dbDate(t.updated_at),
   })));
 });
 

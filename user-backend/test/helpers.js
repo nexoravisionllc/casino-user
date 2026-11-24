@@ -60,7 +60,13 @@ mock.reset();
 
 // ---- Environment (set before importing the app; real env beats .env) ----
 
+// Throwaway Web Push keys, so tests never use the real ones from .env.
+const testVapid = (await import('web-push')).default.generateVAPIDKeys();
+
 Object.assign(process.env, {
+  VAPID_PUBLIC_KEY: testVapid.publicKey,
+  VAPID_PRIVATE_KEY: testVapid.privateKey,
+  VAPID_SUBJECT: 'mailto:test@example.com',
   DATABASE_URL: '',
   DB_HOST: process.env.TEST_DB_HOST || '127.0.0.1',
   DB_PORT: process.env.TEST_DB_PORT || '33306',
